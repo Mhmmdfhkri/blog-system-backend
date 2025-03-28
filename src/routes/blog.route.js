@@ -3,21 +3,23 @@ const router = express.Router();
 const Blog = require("../model/blog.model.js");
 const Comment = require("../model/comment.model.js");
 const verifyToken = require("../middleware/verifyToken.js");
-const isAdmin = require('../middleware/isAdmin.js');
+const isAdmin = require("../middleware/isAdmin.js");
 
 // create a blog post
-router.post('/create-post', verifyToken, isAdmin, async (req, res) => {
+router.post("/create-post", verifyToken, isAdmin, async (req, res) => {
   try {
-      // console.log("UserId: ", req.userId)
-      const newPost = new Blog({
-          ...req.body,
-          author: req.userId,
-      });
-      await newPost.save();
-      res.status(201).send({ message: 'Post created successfully', post: newPost });
+    // console.log("UserId: ", req.userId)
+    const newPost = new Blog({
+      ...req.body,
+      author: req.userId,
+    });
+    await newPost.save();
+    res
+      .status(201)
+      .send({ message: "Post created successfully", post: newPost });
   } catch (error) {
-      console.error('Error creating post:', error);
-      res.status(500).send({ message: 'Failed to create post' });
+    console.error("Error creating post:", error);
+    res.status(500).send({ message: "Failed to create post" });
   }
 });
 
@@ -34,7 +36,8 @@ router.get("/", async (req, res) => {
         ...query,
         $or: [
           { title: { $regex: search, $options: "i" } },
-          { content: { $regex: search, $options: "i" } },
+          { category: { $regex: search, $options: "i" } },
+          // { content: { $regex: search, $options: "i" } },
         ],
       };
     }
@@ -56,9 +59,7 @@ router.get("/", async (req, res) => {
     const posts = await Blog.find(query)
       .populate("author", "email")
       .sort({ createdAt: -1 });
-    res.status(200).send(
-      posts
-    );
+    res.status(200).send(posts);
   } catch (error) {
     console.error("Error creating post", error);
     res.status(500).send({ message: "Error Creating a Post" });
@@ -71,7 +72,10 @@ router.get("/:id", async (req, res) => {
     console.log(req.params.id);
     const postId = req.params.id;
     //const post = await Blog.findById(postId);
-    const post = await Blog.findById(postId).populate("author", "user username");
+    const post = await Blog.findById(postId).populate(
+      "author",
+      "user username"
+    );
 
     if (!post) {
       return res.status(404).send({ message: "Post Not Found" });
@@ -81,7 +85,8 @@ router.get("/:id", async (req, res) => {
       "username email"
     );
     res.status(200).send({
-      post, comments,
+      post,
+      comments,
     });
   } catch (error) {
     console.error("Error Fatching Single post", error);
@@ -128,7 +133,7 @@ router.delete("/:id", verifyToken, isAdmin, async (req, res) => {
     await Comment.deleteMany({ postId: postId });
 
     res.status(201).send({
-      message: "Post Deleted Successfully!",
+      message: "Post Berhasil dihapus!",
       post: post,
     });
   } catch (error) {
@@ -150,20 +155,45 @@ router.get("/related/:id", async (req, res) => {
       return res.status(404).send({ message: "Post Not Found" });
     }
     const titleRegex = new RegExp(blog.title.split(" ").join("|"), "i");
+    const categoryRegex = new RegExp(blog.category.split(" ").join("|"), "i");
 
     const releatedQuery = {
       _id: { $ne: id }, // exclude the current blog by id
-      title: { $regex: titleRegex },
+      $or: [
+        { title: { $regex: titleRegex } },
+        { category: { $regex: categoryRegex } },
+      ],
     };
 
     const releatedPost = await Blog.find(releatedQuery);
-    res
-      .status(200)
-      .send(releatedPost);
-
+    res.status(200).send(releatedPost);
   } catch (error) {
     console.error("Error fetching related  post", error);
     res.status(500).send({ message: "Error fetching related  post" });
+  }
+});
+
+router.post("/:id/rate", async (req, res) => {
+  try {
+    console.log("Request masuk ke /rate:", req.body); // Debugging
+
+    const { rating } = req.body;
+    if (!rating || typeof rating !== "number") {
+      return res.status(400).json({ message: "Rating harus berupa angka!" });
+    }
+
+    const blog = await Blog.findById(req.params.id);
+    if (!blog) {
+      return res.status(404).json({ message: "Blog tidak ditemukan" });
+    }
+
+    blog.ratings.push(rating);
+    await blog.save();
+
+    res.status(200).json({ message: "Rating berhasil diberikan", blog });
+  } catch (error) {
+    console.error("Error di /rate:", error);
+    res.status(500).json({ message: "Terjadi kesalahan server" });
   }
 });
 
