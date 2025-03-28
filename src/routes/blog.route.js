@@ -6,7 +6,7 @@ const verifyToken = require("../middleware/verifyToken.js");
 const isAdmin = require("../middleware/isAdmin.js");
 
 // create a blog post
-router.post("/create-post", verifyToken, isAdmin, async (req, res) => {
+router.post("/create-post", async (req, res) => {
   try {
     // console.log("UserId: ", req.userId)
     const newPost = new Blog({
@@ -95,7 +95,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // update a Blog Post
-router.patch("/update-post/:id", verifyToken, isAdmin, async (req, res) => {
+router.patch("/update-post/:id", async (req, res) => {
   try {
     const postId = req.params.id;
     const updatedPost = await Blog.findByIdAndUpdate(
@@ -120,7 +120,7 @@ router.patch("/update-post/:id", verifyToken, isAdmin, async (req, res) => {
 });
 
 // delete a Blog
-router.delete("/:id", verifyToken, isAdmin, async (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
     const postId = req.params.id;
     const post = await Blog.findByIdAndDelete(postId);
